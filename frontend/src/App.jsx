@@ -9,6 +9,7 @@ import Help from "./pages/Help";
 import Navbar from "./components/Navbar";
 import PrivateRoute from "./components/PrivateRoute";
 import AuthProvider from "./context/AuthContext";
+import ClientRegister from "./pages/ClientRegister";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="/help" element={<Help />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/client-register" element={<ClientRegister />} />
           <Route element={<PrivateRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>

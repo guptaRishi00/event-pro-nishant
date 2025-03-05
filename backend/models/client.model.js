@@ -1,11 +1,10 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-require("dotenv").config();
 
 const Schema = mongoose.Schema;
 
-const userSchema = new Schema({
+const clientSchema = new Schema({
   email: {
     type: String,
     require: true,
@@ -25,21 +24,21 @@ const userSchema = new Schema({
   },
 });
 
-userSchema.statics.hashPassword = async function (password) {
+clientSchema.statics.hashPassword = async function (password) {
   return await bcrypt.hash(password, 10);
 };
 
-userSchema.methods.generateToken = async function () {
+clientSchema.methods.generateToken = async function () {
   const token = await jwt.sign({ email: this.email }, process.env.JWT_SECRET, {
     expiresIn: "24h",
   });
   return token;
 };
 
-userSchema.methods.comparePassword = async function (password) {
+clientSchema.methods.comparePassword = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
 
-const userModel = mongoose.model("User", userSchema);
+const clientModel = mongoose.model("Client", clientSchema);
 
-module.exports = userModel;
+module.exports = clientModel;
