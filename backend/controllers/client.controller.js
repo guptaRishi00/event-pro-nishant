@@ -1,4 +1,6 @@
 const clientModel = require("../models/client.model");
+const eventModel = require("../models/event.model");
+const { uploadOnCloudinary } = require("../utils/cloudinary");
 
 const clientRegister = async (req, res) => {
   const { fullname, email, password } = req.body;
@@ -36,4 +38,65 @@ const clientRegister = async (req, res) => {
     res.status(400).json({ message: error.message });
   }
 };
-module.exports = { clientRegister };
+
+const postEvents = async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      date,
+      time,
+      location,
+      city,
+      category,
+      price,
+      organizer,
+      organizerEmail,
+    } = req.body;
+
+    if (!title || !description) {
+      return res
+        .status(400)
+        .json({ message: "Please provide all required fields" });
+    }
+
+    // Handle optional image upload
+    let eventPictureUrl = "default-event.jpg";
+    if (req.file?.path) {
+      const eventPicture = await uploadOnCloudinary(req.file.path);
+      if (eventPicture) {
+        eventPictureUrl = eventPicture.secure_url;
+      }
+    }
+
+    // Save the event with the Cloudinary image URL
+    const newEvent = await eventModel.create({
+      title,
+      description,
+      date,
+      time,
+      location,
+      city,
+      category,
+      price,
+      organizer,
+      organizerEmail,
+      image: eventPictureUrl, // ✅ Use Cloudinary URL
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Event created successfully",
+      event: newEvent,
+    });
+  } catch (error) {
+    console.error("Error creating event:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = { postEvents, clientRegister };

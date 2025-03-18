@@ -1,8 +1,6 @@
 const bcrypt = require("bcrypt");
 const userModel = require("../models/user.model");
 
-const eventModel = require("../models/event.model");
-
 module.exports.userRegister = async (req, res) => {
   const { email, password, fullname } = req.body;
 
@@ -69,22 +67,6 @@ module.exports.getProfile = async (req, res) => {
 
   try {
     const response = await userModel.findOne({ email: user.email });
-
-    if (!response) {
-      return res.status(401).json({ message: "Invalid token or user" });
-    }
-
-    res.status(200).json({ response });
-  } catch (error) {
-    res.status(401).json({ error: error.message });
-  }
-};
-
-module.exports.getEvents = async (req, res) => {
-  const user = req.user;
-
-  try {
-    const response = await eventModel.find({});
 
     if (!response) {
       return res.status(401).json({ message: "Invalid token or user" });

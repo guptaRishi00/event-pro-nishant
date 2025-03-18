@@ -7,5 +7,5 @@ const { userAuthMiddleWare } = require("../middleware/userAuthMiddleware");
 router.post("/register", userController.userRegister);
 router.post("/login", userController.userLogin);
 router.get("/profile", userAuthMiddleWare, userController.getProfile);
-router.get("/events", userController.getEvents);
+
 module.exports = router;
