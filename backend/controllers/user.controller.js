@@ -1,97 +1,131 @@
-const bcrypt = require("bcrypt");
-const userModel = require("../models/user.model");
+const bcrypt = require("bcryptjs");
+const User = require("../models/user.model");
+const Event = require("../models/event.model");
 
-const eventModel = require("../models/event.model");
+exports.userRegister = async (req, res) => {
+  const { name, email, password, userType, phone, organization } = req.body;
 
-module.exports.userRegister = async (req, res) => {
-  const { email, password, fullname } = req.body;
-
-  if (!email || !password || !fullname) {
-    return res.status(400).json({ message: "All fields are required" });
+  // Add enum validation
+  if (!["user", "client"].includes(userType)) {
+    return res.status(400).json({ message: "Invalid user type" });
   }
 
-  const isUserExists = await userModel.findOne({ email });
-
-  if (isUserExists) {
-    return res.status(400).json({ message: "user already exists" });
-  }
-
-  const hashedPassword = await userModel.hashPassword(password);
-
-  try {
-    const user = await userModel.create({
-      email,
-      password: hashedPassword,
-      firstname: fullname.firstname,
-      lastname: fullname.lastname,
-    });
-
-    const token = await user.generateToken();
-
-    res.status(200).json({ token, user });
-  } catch (error) {
-    res.status(200).json({ error: error.message });
-  }
+  // Create user with correct type
+  const user = await User.create({
+    name,
+    email,
+    password,
+    userType, // Use validated userType
+    phone,
+    organization: userType === "client" ? organization : undefined,
+  });
 };
 
-module.exports.userLogin = async (req, res) => {
+// Log in a user
+exports.userLogin = async (req, res) => {
   const { email, password } = req.body;
 
+  // Basic validation
   if (!email || !password) {
-    return res.status(400).json({ message: "All fields are required" });
+    return res.status(400).json({ message: "Email and password are required" });
   }
 
   try {
-    const user = await userModel.findOne({ email });
+    // Find user with password
+    const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
-      return res.status(401).json({ message: "Invalid user" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
+    // Verify password
     const isMatch = await user.comparePassword(password);
-
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid emial or password" });
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = await user.generateToken();
+    // Generate JWT with expiration
+    const token = user.generateToken();
 
-    res.cookie("token", token);
+    // Sanitize user object
+    const userWithoutPassword = user.toObject();
+    delete userWithoutPassword.password;
 
-    res.status(200).json({ token, user });
+    // Set token in HTTP-only cookie (optional)
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    res.status(200).json({
+      success: true,
+      token, // Optional if using cookies
+      user: userWithoutPassword,
+    });
   } catch (error) {
-    res.status(200).json({ error: error.message });
+    console.error("Login error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error during authentication",
+    });
   }
 };
 
-module.exports.getProfile = async (req, res) => {
-  const user = req.user;
-
+// Get user profile
+exports.getProfile = async (req, res) => {
   try {
-    const response = await userModel.findOne({ email: user.email });
+    const user = await User.findById(req.user.id);
 
-    if (!response) {
-      return res.status(401).json({ message: "Invalid token or user" });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
-    res.status(200).json({ response });
+    res.status(200).json({
+      success: true,
+      user: {
+        ...user.toObject(),
+        password: undefined,
+      },
+    });
   } catch (error) {
-    res.status(401).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
-module.exports.getEvents = async (req, res) => {
-  const user = req.user;
-
+// Get all events
+exports.getEvents = async (req, res) => {
   try {
-    const response = await eventModel.find({});
+    const { category, city, page = 1, limit = 10 } = req.query;
+    const query = {};
 
-    if (!response) {
-      return res.status(401).json({ message: "Invalid token or user" });
-    }
+    if (category) query.category = category;
+    if (city) query.city = new RegExp(city, "i");
 
-    res.status(200).json({ response });
+    const events = await Event.find(query)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .populate("organizer", "name email");
+
+    const count = await Event.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      count,
+      totalPages: Math.ceil(count / limit),
+      currentPage: page,
+      events,
+    });
   } catch (error) {
-    res.status(401).json({ error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve events",
+    });
   }
 };

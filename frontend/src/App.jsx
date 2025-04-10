@@ -10,6 +10,11 @@ import PrivateRoute from "./components/PrivateRoute";
 import AuthProvider from "./context/AuthContext";
 import EventForm from "./components/EventForm";
 import EventCard from "./pages/EventCard";
+import ClientRegister from "./pages/ClientRegister";
+import { Profiler } from "react";
+import UserProfile from "./pages/UserProfile";
+import PostEvent from "./pages/PostEvent";
+import YourEvents from "./pages/YourEvents";
 
 function App() {
   return (
@@ -23,7 +28,11 @@ function App() {
           <Route path="/events" element={<EventCard />} />
           <Route path="/help" element={<Help />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/profile" element={<UserProfile />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/client-register" element={<ClientRegister />} />
+          <Route path="/post-event" element={<PostEvent />} />
+          <Route path="/your-events" element={<YourEvents />} />
           <Route element={<PrivateRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>

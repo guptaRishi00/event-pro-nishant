@@ -46,6 +46,20 @@ const eventSchema = new Schema(
       type: String,
       required: true,
     },
+    organizer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    category: {
+      type: String,
+      enum: ["concert", "conference", "sports", "workshop"],
+      required: true,
+    },
+    isFree: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

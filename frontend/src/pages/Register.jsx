@@ -1,34 +1,30 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { useDispatch } from "react-redux";
+import { fetchUserDetails, loginSuccess } from "../features/userAuthSlice";
 
 const Register = () => {
   const [formData, setFormData] = useState({
-    fullname: {
-      firstname: "",
-      lastname: "",
-    },
+    name: "",
     email: "",
     password: "",
     confirmPassword: "",
+    phone: "",
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      fullname:
-        name in prev.fullname
-          ? { ...prev.fullname, [name]: value }
-          : prev.fullname,
-      [name]: name in prev.fullname ? prev[name] : value,
+      [name]: value,
     }));
-
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -36,18 +32,18 @@ const Register = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.fullname.firstname.trim())
-      newErrors.firstname = "First name is required";
-    if (!formData.fullname.lastname.trim())
-      newErrors.lastname = "Last name is required";
+    if (!formData.name.trim()) newErrors.name = "Name is required";
     if (!formData.email) newErrors.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
+    else if (
+      !/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(formData.email)
+    )
       newErrors.email = "Invalid email format";
     if (!formData.password) newErrors.password = "Password is required";
     else if (formData.password.length < 6)
       newErrors.password = "Password must be at least 6 characters";
     if (formData.password !== formData.confirmPassword)
       newErrors.confirmPassword = "Passwords do not match";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -55,18 +51,38 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+
     setLoading(true);
     try {
       const response = await axios.post("http://localhost:4000/user/register", {
-        fullname: formData.fullname,
+        userType: "user",
+        name: formData.name,
         email: formData.email,
         password: formData.password,
+        phone: formData.phone,
       });
-      await localStorage.setItem("token", response.data.token);
+
+      console.log("Registration successful:", response.data);
+
+      // Store token in localStorage
+      localStorage.setItem("token", response.data.token);
+
+      // Dispatch Redux actions
+      dispatch(
+        loginSuccess({
+          token: response.data.token,
+        })
+      );
+
+      // Fetch user details after successful registration
+      await dispatch(fetchUserDetails());
+
+      console.log("user registered and logged in", response.data);
+
       setLoading(false);
       navigate("/");
-      console.log(response.data);
     } catch (error) {
+      console.error("Registration error:", error.response?.data || error);
       setLoading(false);
       setErrors({
         general:
@@ -78,9 +94,8 @@ const Register = () => {
 
   const nextStep = () => {
     if (
-      formData.fullname.firstname.trim() &&
-      formData.fullname.lastname.trim() &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
+      formData.name.trim() &&
+      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(formData.email)
     ) {
       setCurrentStep(2);
     } else {
@@ -132,56 +147,27 @@ const Register = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {currentStep === 1 && (
               <div className="space-y-4">
-                <div className="flex space-x-4">
-                  <div className="w-1/2 space-y-2">
-                    <label
-                      htmlFor="firstname"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      First Name
-                    </label>
-                    <input
-                      id="firstname"
-                      name="firstname"
-                      type="text"
-                      value={formData.fullname.firstname}
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 border ${
-                        errors.firstname ? "border-red-500" : "border-gray-300"
-                      } rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
-                      placeholder="John"
-                    />
-                    {errors.firstname && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {errors.firstname}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="w-1/2 space-y-2">
-                    <label
-                      htmlFor="lastname"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      Last Name
-                    </label>
-                    <input
-                      id="lastname"
-                      name="lastname"
-                      type="text"
-                      value={formData.fullname.lastname}
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 border ${
-                        errors.lastname ? "border-red-500" : "border-gray-300"
-                      } rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
-                      placeholder="Doe"
-                    />
-                    {errors.lastname && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {errors.lastname}
-                      </p>
-                    )}
-                  </div>
+                <div className="space-y-2">
+                  <label
+                    htmlFor="name"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Full Name
+                  </label>
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 border ${
+                      errors.name ? "border-red-500" : "border-gray-300"
+                    } rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
+                    placeholder="John Doe"
+                  />
+                  {errors.name && (
+                    <p className="text-xs text-red-500 mt-1">{errors.name}</p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -204,6 +190,30 @@ const Register = () => {
                   />
                   {errors.email && (
                     <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="phone"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Phone Number{" "}
+                    <span className="text-gray-400">(Optional)</span>
+                  </label>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 border ${
+                      errors.phone ? "border-red-500" : "border-gray-300"
+                    } rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
+                    placeholder="+1 (123) 456-7890"
+                  />
+                  {errors.phone && (
+                    <p className="text-xs text-red-500 mt-1">{errors.phone}</p>
                   )}
                 </div>
 
@@ -335,7 +345,9 @@ const Register = () => {
           </div>
 
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-            <h3 className="font-semibold text-blue-800 mb-2">Why join us?</h3>
+            <h3 className="font-semibold text-blue-800 mb-2">
+              Why join as an individual user?
+            </h3>
             <ul className="space-y-2">
               <li className="flex items-start">
                 <svg

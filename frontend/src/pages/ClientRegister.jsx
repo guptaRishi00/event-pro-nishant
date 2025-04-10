@@ -1,34 +1,31 @@
-import axios from "axios";
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { useDispatch } from "react-redux";
+import { fetchUserDetails, loginSuccess } from "../features/userAuthSlice";
 
-function ClientRegister() {
+const ClientRegister = () => {
   const [formData, setFormData] = useState({
-    fullname: {
-      firstname: "",
-      lastname: "",
-    },
+    name: "",
     email: "",
     password: "",
     confirmPassword: "",
+    phone: "",
+    organization: "",
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      fullname:
-        name in prev.fullname
-          ? { ...prev.fullname, [name]: value }
-          : prev.fullname,
-      [name]: name in prev.fullname ? prev[name] : value,
+      [name]: value,
     }));
-
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -36,18 +33,20 @@ function ClientRegister() {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.fullname.firstname.trim())
-      newErrors.firstname = "First name is required";
-    if (!formData.fullname.lastname.trim())
-      newErrors.lastname = "Last name is required";
+    if (!formData.name.trim()) newErrors.name = "Contact person is required";
+    if (!formData.organization.trim())
+      newErrors.organization = "Organization name is required";
     if (!formData.email) newErrors.email = "Email is required";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
+    else if (
+      !/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(formData.email)
+    )
       newErrors.email = "Invalid email format";
     if (!formData.password) newErrors.password = "Password is required";
     else if (formData.password.length < 6)
       newErrors.password = "Password must be at least 6 characters";
     if (formData.password !== formData.confirmPassword)
       newErrors.confirmPassword = "Passwords do not match";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -55,21 +54,41 @@ function ClientRegister() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
+
     setLoading(true);
     try {
       const response = await axios.post(
         "http://localhost:4000/client/register",
         {
-          fullname: formData.fullname,
+          name: formData.name,
           email: formData.email,
           password: formData.password,
+          phone: formData.phone,
+          organization: formData.organization,
         }
       );
-      await localStorage.setItem("token", response.data.token);
+
+      console.log("Client registration successful:", response.data);
+
+      // Store token in localStorage
+      localStorage.setItem("token", response.data.token);
+
+      // Dispatch Redux actions
+      dispatch(
+        loginSuccess({
+          token: response.data.token,
+        })
+      );
+
+      // Fetch user details after successful registration
+      await dispatch(fetchUserDetails());
+
+      console.log("client registered and logged in", response.data);
+
       setLoading(false);
       navigate("/");
-      console.log(response.data);
     } catch (error) {
+      console.error("Registration error:", error.response?.data || error);
       setLoading(false);
       setErrors({
         general:
@@ -81,9 +100,9 @@ function ClientRegister() {
 
   const nextStep = () => {
     if (
-      formData.fullname.firstname.trim() &&
-      formData.fullname.lastname.trim() &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
+      formData.name.trim() &&
+      formData.organization.trim() &&
+      /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(formData.email)
     ) {
       setCurrentStep(2);
     } else {
@@ -92,6 +111,7 @@ function ClientRegister() {
   };
 
   const prevStep = () => setCurrentStep(1);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 relative overflow-hidden">
       {/* Animated background elements */}
@@ -117,11 +137,10 @@ function ClientRegister() {
         <div className="w-full md:w-1/2 flex flex-col justify-center">
           <div className="space-y-4 mb-8">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-              Create your account
+              Business Client Registration
             </h1>
             <p className="text-gray-600">
-              Join our community and get access to exclusive features and
-              content.
+              Register your organization to access business features.
             </p>
           </div>
 
@@ -134,67 +153,51 @@ function ClientRegister() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {currentStep === 1 && (
               <div className="space-y-4">
-                <div className="flex space-x-4">
-                  <div className="w-1/2 space-y-2">
-                    <label
-                      htmlFor="firstname"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      First Name
-                    </label>
-                    <input
-                      id="firstname"
-                      name="firstname"
-                      type="text"
-                      value={formData.fullname.firstname}
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 border ${
-                        errors.firstname ? "border-red-500" : "border-gray-300"
-                      } rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
-                      placeholder="John"
-                    />
-                    {errors.firstname && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {errors.firstname}
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="w-1/2 space-y-2">
-                    <label
-                      htmlFor="lastname"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      Last Name
-                    </label>
-                    <input
-                      id="lastname"
-                      name="lastname"
-                      type="text"
-                      value={formData.fullname.lastname}
-                      onChange={handleChange}
-                      className={`w-full px-3 py-2 border ${
-                        errors.lastname ? "border-red-500" : "border-gray-300"
-                      } rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
-                      placeholder="Doe"
-                    />
-                    {errors.lastname && (
-                      <p className="text-xs text-red-500 mt-1">
-                        {errors.lastname}
-                      </p>
-                    )}
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Organization Name *
+                  </label>
+                  <input
+                    name="organization"
+                    type="text"
+                    value={formData.organization}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 border ${
+                      errors.organization ? "border-red-500" : "border-gray-300"
+                    } rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
+                    placeholder="Acme Corp"
+                  />
+                  {errors.organization && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {errors.organization}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <label
-                    htmlFor="email"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Email
+                  <label className="text-sm font-medium text-gray-700">
+                    Contact Person *
                   </label>
                   <input
-                    id="email"
+                    name="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 border ${
+                      errors.name ? "border-red-500" : "border-gray-300"
+                    } rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
+                    placeholder="John Doe"
+                  />
+                  {errors.name && (
+                    <p className="text-xs text-red-500 mt-1">{errors.name}</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Email Address *
+                  </label>
+                  <input
                     name="email"
                     type="email"
                     value={formData.email}
@@ -202,7 +205,7 @@ function ClientRegister() {
                     className={`w-full px-3 py-2 border ${
                       errors.email ? "border-red-500" : "border-gray-300"
                     } rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition`}
-                    placeholder="name@example.com"
+                    placeholder="business@example.com"
                   />
                   {errors.email && (
                     <p className="text-xs text-red-500 mt-1">{errors.email}</p>
@@ -222,14 +225,24 @@ function ClientRegister() {
             {currentStep === 2 && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label
-                    htmlFor="password"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Password
+                  <label className="text-sm font-medium text-gray-700">
+                    Phone Number
                   </label>
                   <input
-                    id="password"
+                    name="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    placeholder="+1 (123) 456-7890"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Password *
+                  </label>
+                  <input
                     name="password"
                     type="password"
                     value={formData.password}
@@ -247,14 +260,10 @@ function ClientRegister() {
                 </div>
 
                 <div className="space-y-2">
-                  <label
-                    htmlFor="confirmPassword"
-                    className="text-sm font-medium text-gray-700"
-                  >
-                    Confirm Password
+                  <label className="text-sm font-medium text-gray-700">
+                    Confirm Password *
                   </label>
                   <input
-                    id="confirmPassword"
                     name="confirmPassword"
                     type="password"
                     value={formData.confirmPassword}
@@ -308,7 +317,7 @@ function ClientRegister() {
                         ></path>
                       </svg>
                     ) : (
-                      "Create Account"
+                      "Complete Registration"
                     )}
                   </button>
                 </div>
@@ -319,10 +328,10 @@ function ClientRegister() {
           <div className="mt-6 text-center text-sm text-gray-600">
             Already have an account?{" "}
             <a
-              href="/login"
+              href="/client/login"
               className="font-medium text-blue-600 hover:text-blue-500 hover:underline transition"
             >
-              Sign in
+              Business Login
             </a>
           </div>
         </div>
@@ -337,7 +346,9 @@ function ClientRegister() {
           </div>
 
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-            <h3 className="font-semibold text-blue-800 mb-2">Why join us?</h3>
+            <h3 className="font-semibold text-blue-800 mb-2">
+              Why register as a business client?
+            </h3>
             <ul className="space-y-2">
               <li className="flex items-start">
                 <svg
@@ -352,7 +363,7 @@ function ClientRegister() {
                   />
                 </svg>
                 <span className="text-sm">
-                  Exclusive access to premium content
+                  Advanced business analytics and reporting
                 </span>
               </li>
               <li className="flex items-start">
@@ -368,7 +379,7 @@ function ClientRegister() {
                   />
                 </svg>
                 <span className="text-sm">
-                  Connect with like-minded community members
+                  Multi-user access and team collaboration tools
                 </span>
               </li>
               <li className="flex items-start">
@@ -384,7 +395,7 @@ function ClientRegister() {
                   />
                 </svg>
                 <span className="text-sm">
-                  Save your preferences and get personalized recommendations
+                  Priority support and dedicated account management
                 </span>
               </li>
             </ul>
@@ -393,6 +404,6 @@ function ClientRegister() {
       </div>
     </div>
   );
-}
+};
 
 export default ClientRegister;

@@ -1,26 +1,22 @@
-const clientModel = require("../models/client.model");
+const userModel = require("../models/user.model");
 const eventModel = require("../models/event.model");
 const { uploadOnCloudinary } = require("../utils/cloudinary");
 
 const clientRegister = async (req, res) => {
-  const { fullname, email, password } = req.body;
+  const { name, email, password, phone, organization } = req.body;
 
-  if (!fullname || !email || !password) {
+  if (!name || !email || !password) {
     throw new Error("All fields are required");
   }
 
-  const hashedPassword = await clientModel.hashPassword(password);
-
-  if (!hashedPassword) {
-    throw new Error("Something went wrong in hashing password");
-  }
-
   try {
-    const client = await clientModel.create({
-      firstname: fullname.firstname,
-      lastname: fullname.lastname,
+    const client = await userModel.create({
+      name,
       email,
-      passowrd: hashedPassword,
+      password,
+      userType: "client",
+      phone: phone || "",
+      organization: organization || "",
     });
 
     if (!client) {
