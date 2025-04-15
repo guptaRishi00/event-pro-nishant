@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import {
   Calendar,
-  MapPin,
   Tag,
   DollarSign,
   Image,
@@ -13,6 +12,8 @@ import {
   Save,
   ArrowLeft,
   Upload,
+  MapPin,
+  X,
 } from "lucide-react";
 
 const PostEvent = () => {
@@ -20,7 +21,6 @@ const PostEvent = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -38,31 +38,34 @@ const PostEvent = () => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value,
+      [name]:
+        type === "checkbox"
+          ? checked
+          : name === "price"
+          ? Number(value)
+          : value,
     }));
-
-    // If isFree is checked, set price to 0
-    if (name === "isFree" && checked) {
-      setFormData((prev) => ({ ...prev, price: 0 }));
-    }
   };
 
+  // Simplified image upload handling - no preview
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       setImageFile(file);
-
-      // Create a preview URL for the selected image
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
     }
+  };
+
+  // Clear image selection
+  const clearImage = () => {
+    setImageFile(null);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError(null);
 
+    setError(null);
+    const token = localStorage.getItem("token");
     try {
       // Create a FormData object for multipart/form-data submission (for file upload)
       const eventFormData = new FormData();
@@ -74,22 +77,22 @@ const PostEvent = () => {
 
       // Append the image file if one was selected
       if (imageFile) {
-        eventFormData.append("image", imageFile);
+        eventFormData.append("picture", imageFile);
       }
 
       // We assume the API endpoint for posting events
       const response = await axios.post(
-        "http://localhost:4000/api/events",
+        "http://localhost:4000/client/post-event",
         eventFormData,
         {
           headers: {
             "Content-Type": "multipart/form-data",
             // Include authorization if your API requires it
-            // Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
-
+      console.log(response.data);
       setSuccess(true);
       setLoading(false);
 
@@ -99,7 +102,7 @@ const PostEvent = () => {
       }, 2000);
     } catch (err) {
       setError(
-        err.response?.data?.message ||
+        err?.response?.data?.message ||
           "Failed to create event. Please try again."
       );
       setLoading(false);
@@ -236,9 +239,8 @@ const PostEvent = () => {
                   required
                   value={formData.description}
                   onChange={handleChange}
-                  rows="4"
-                  placeholder="Describe your event"
-                  className="w-full p-3 rounded-lg border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                  placeholder="Enter event description"
+                  className="w-full p-2 rounded border"
                 />
               </div>
 
@@ -300,68 +302,48 @@ const PostEvent = () => {
                 </div>
               </div>
 
-              {/* Image Upload */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              {/* Simplified Image Upload */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Event Image
                 </label>
-                <div className="mt-1 flex flex-col space-y-4">
-                  {/* Image Preview */}
-                  {imagePreview && (
-                    <div className="relative w-full h-48 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700">
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setImagePreview(null);
-                          setImageFile(null);
-                        }}
-                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-5 w-5"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  )}
 
-                  {/* File Input */}
-                  <div className="flex items-center justify-center w-full">
-                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                        <Upload className="w-8 h-8 mb-3 text-gray-400" />
-                        <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                          <span className="font-semibold">Click to upload</span>{" "}
-                          or drag and drop
-                        </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          PNG, JPG or GIF (Max 2MB)
-                        </p>
-                      </div>
-                      <input
-                        id="dropzone-file"
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="hidden"
-                        name="picture"
-                      />
-                    </label>
-                  </div>
+                {/* Simple file input with button */}
+                <div className="flex items-center space-x-2">
+                  <label className="flex items-center px-4 py-2 bg-indigo-50 text-indigo-600 rounded cursor-pointer hover:bg-indigo-100">
+                    <Upload className="w-4 h-4 mr-2" />
+                    <span>{imageFile ? "Change Image" : "Select Image"}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {imageFile && (
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      className="px-3 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 flex items-center"
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      <span>Remove</span>
+                    </button>
+                  )}
                 </div>
+
+                {/* File name display instead of preview */}
+                {imageFile && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Selected: {imageFile.name}
+                  </p>
+                )}
+
+                {/* Simple help text */}
+                <p className="text-xs text-gray-500 mt-1">
+                  Supported formats: PNG, JPG, or GIF (max 2MB)
+                </p>
               </div>
 
               {/* Price */}
@@ -376,7 +358,7 @@ const PostEvent = () => {
                     name="price"
                     value={formData.price}
                     onChange={handleChange}
-                    disabled={formData.isFree}
+                    // disabled={formData.isFree}
                     placeholder="0.00"
                     className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
                   />
@@ -442,16 +424,13 @@ const PostEvent = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full flex justify-center items-center py-3 px-4 border border-transparent rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors"
+                  className={`w-full bg-indigo-600 text-white py-2 px-4 rounded ${
+                    loading
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:bg-indigo-700"
+                  }`}
                 >
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-                  ) : (
-                    <>
-                      <Save className="w-5 h-5 mr-2" />
-                      Create Event
-                    </>
-                  )}
+                  {loading ? "Submitting..." : "Create Event"}
                 </button>
               </div>
             </form>

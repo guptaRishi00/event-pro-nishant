@@ -40,45 +40,55 @@ const postEvents = async (req, res) => {
     const {
       title,
       description,
-      date,
-      time,
       location,
       city,
       category,
       price,
-      organizer,
       organizerEmail,
+      organizer,
     } = req.body;
 
-    if (!title || !description) {
-      return res
-        .status(400)
-        .json({ message: "Please provide all required fields" });
+    console.log("Creating event for user:", req.user.email);
+    console.log("Request body:", req.body);
+
+    // Validate required fields based on your schema
+    if (!title || !description || !location || !city || !category) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Title, Description, Location, City, and Category are required",
+      });
     }
 
-    // Handle optional image upload
-    let eventPictureUrl = "default-event.jpg";
+    // Handle image upload
+    let imageUrl = "default-event.jpg";
     if (req.file?.path) {
-      const eventPicture = await uploadOnCloudinary(req.file.path);
-      if (eventPicture) {
-        eventPictureUrl = eventPicture.secure_url;
+      const cloudinaryResponse = await uploadOnCloudinary(req.file.path);
+      if (!cloudinaryResponse?.secure_url) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload image to Cloudinary",
+        });
       }
+      imageUrl = cloudinaryResponse.secure_url;
     }
 
-    // Save the event with the Cloudinary image URL
+    // Create event with proper field names matching your schema
     const newEvent = await eventModel.create({
       title,
       description,
-      date,
-      time,
       location,
       city,
       category,
-      price,
-      organizer,
-      organizerEmail,
-      image: eventPictureUrl, // ✅ Use Cloudinary URL
+      price: price || 0,
+      image: imageUrl,
+      organizer: req.user.name,
+      organizerEmail: req.user.email,
+      user: req.user._id,
+      isFree: price === 0,
     });
+
+    console.log("Created event:", newEvent);
 
     return res.status(201).json({
       success: true,
@@ -86,13 +96,38 @@ const postEvents = async (req, res) => {
       event: newEvent,
     });
   } catch (error) {
-    console.error("Error creating event:", error);
+    console.error("Event creation error:", error);
     return res.status(500).json({
       success: false,
-      message: "Something went wrong",
-      error: error.message,
+      message: error.message || "Internal server error",
     });
   }
 };
 
-module.exports = { postEvents, clientRegister };
+const yourEvents = async (req, res) => {
+  try {
+    console.log("Fetching events for user:", req.user.email);
+    const events = await eventModel.find({
+      organizerEmail: req.user.email,
+    });
+
+    console.log("Found events:", events);
+
+    res.status(200).json({
+      success: true,
+      count: events.length,
+      events: events.map((event) => ({
+        ...event.toObject(),
+        isOrganizerClient: req.user.userType === "client",
+      })),
+    });
+  } catch (error) {
+    console.error("Error fetching user events:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while retrieving your events",
+    });
+  }
+};
+
+module.exports = { postEvents, clientRegister, yourEvents };

@@ -50,7 +50,7 @@ const Navbar = () => {
   } else if (isRegularUser) {
     // For regular users, add Register Events
     navigationItems.push({
-      path: "/register-events",
+      path: "/registered-events",
       label: "Registered Events",
     });
   } else {

@@ -15,6 +15,8 @@ import { Profiler } from "react";
 import UserProfile from "./pages/UserProfile";
 import PostEvent from "./pages/PostEvent";
 import YourEvents from "./pages/YourEvents";
+import EventDetails from "./pages/EventDetails";
+import RegisteredEvents from "./pages/RegisteredEvents";
 
 function App() {
   return (
@@ -33,6 +35,8 @@ function App() {
           <Route path="/client-register" element={<ClientRegister />} />
           <Route path="/post-event" element={<PostEvent />} />
           <Route path="/your-events" element={<YourEvents />} />
+          <Route path="/event-details/:id" element={<EventDetails />} />
+          <Route path="/registered-events" element={<RegisteredEvents />} />
           <Route element={<PrivateRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
           </Route>

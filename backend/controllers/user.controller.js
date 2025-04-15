@@ -2,6 +2,8 @@ const bcrypt = require("bcryptjs");
 const User = require("../models/user.model");
 const Event = require("../models/event.model");
 
+const Register = require("../models/register.model");
+
 exports.userRegister = async (req, res) => {
   const { name, email, password, userType, phone, organization } = req.body;
 
@@ -102,30 +104,93 @@ exports.getProfile = async (req, res) => {
 // Get all events
 exports.getEvents = async (req, res) => {
   try {
-    const { category, city, page = 1, limit = 10 } = req.query;
-    const query = {};
-
-    if (category) query.category = category;
-    if (city) query.city = new RegExp(city, "i");
-
-    const events = await Event.find(query)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .populate("organizer", "name email");
-
-    const count = await Event.countDocuments(query);
+    const events = await Event.find();
 
     res.status(200).json({
       success: true,
-      count,
-      totalPages: Math.ceil(count / limit),
-      currentPage: page,
-      events,
+      count: events.length,
+      message: "Events fetched successfully",
+      data: events,
     });
   } catch (error) {
+    console.error("Error fetching events:", error.message);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch events",
+    });
+  }
+};
+
+exports.yourEvents = async (req, res) => {
+  try {
+    const events = await Event.find({ organizer: req.user.id });
+    res.status(200).json({ events });
+  } catch (error) {
+    console.log(error);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve events",
+    });
+  }
+};
+
+exports.eventDetails = async (req, res) => {
+  const { id } = req.params;
+  const event = await Event.findOne({ _id: id });
+  if (!event) {
+    return res.status(404).json({
+      success: false,
+      message: "Event not found",
+    });
+  }
+  res.status(200).json({ event });
+};
+
+exports.registeredEvents = async (req, res) => {
+  try {
+    const events = await Register.find({ userId: req.user._id }).populate(
+      "eventId"
+    );
+    if (!events) {
+      return res.status(404).json({
+        success: false,
+        message: "No registered events found",
+      });
+    }
+    res.status(200).json({ events });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve registered events",
+    });
+  }
+};
+
+exports.registerEvent = async (req, res) => {
+  const { id } = req.params;
+  const { fullname, email, phone } = req.body;
+
+  try {
+    const event = await Register.create({
+      fullname,
+      email,
+      phone,
+      eventId: id,
+      userId: req.user._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Event registered successfully",
+      event,
+    });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to register event",
     });
   }
 };

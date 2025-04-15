@@ -22,11 +22,6 @@ const eventSchema = new Schema(
       type: String,
       required: true,
     },
-    // Category for filtering events
-    category: {
-      type: String,
-      required: true,
-    },
     // Event image
     image: {
       type: String,
@@ -37,18 +32,12 @@ const eventSchema = new Schema(
       type: Number,
       default: 0,
     },
-    // Organizer details
     organizer: {
       type: String,
       required: true,
     },
     organizerEmail: {
       type: String,
-      required: true,
-    },
-    organizer: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
       required: true,
     },
     category: {
@@ -59,6 +48,10 @@ const eventSchema = new Schema(
     isFree: {
       type: Boolean,
       default: false,
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   },
   { timestamps: true }
